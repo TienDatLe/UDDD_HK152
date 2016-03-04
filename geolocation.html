@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Location</title>
+  <link href="css/style.css" rel="stylesheet" type="text/css"/> 
+</head>
+<body onload="initialize()" onunload="GUnload()">
+  <div class="wrapper"> 
+    <div class="innerwrapper_submit">
+
+      <article>
+        <h2>Find your location..</h2>
+        <p id="status">(Share location if you want to see the result)</p>
+		    <p id="demo"></p>
+      <article>
+
+    </div>
+  </div>
+  <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+  
+    <script type="text/javascript">
+  
+    function initialize() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(show_location,
+        error_handler);
+      } else {
+        alert('Geolocation not supported in this browser.');
+      }
+    }
+
+    function show_location (position) {
+      var s = document.querySelector('#status');
+      s.innerHTML = "found you!";
+      // Get the user's latitude and longitude
+      var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("demo").innerHTML = JSON.parse(xhttp.responseText).results[1].formatted_address;
+      }
+      };
+      xhttp.open("GET", "http://maps.googleapis.com/maps/api/geocode/json?latlng=10.771673333333332,106.65864833333332&sensor=true", true);
+      xhttp.send();
+      
+      // Create a container for the map
+      var mapcanvas = document.createElement('div');
+      mapcanvas.id = 'mapcanvas';
+      mapcanvas.style.height = '400px';
+      mapcanvas.style.width = '560px';
+      document.querySelector('article').appendChild(mapcanvas);
+
+      var myOptions = {
+        center: latlng,
+        zoom: 15,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      };
+
+      var map = new google.maps.Map(document.getElementById("mapcanvas"),myOptions);
+
+      var marker = new google.maps.Marker({
+        position: latlng,
+        map: map,
+        title: "I ' here"
+      });
+    }
+      function error_handler(msg) {
+        var s = document.querySelector('#status');
+        s.innerHTML = msg + " failed.";
+    }
+    </script>
+</body>
+<html>
