@@ -35,7 +35,7 @@ and open the template in the editor.
                 document.getElementById("to").innerHTML = x;
             }           
             function tiGia(x,y){
-                return Math.round(heso(y)/heso(x)*1000)/1000;
+                return Math.round(heso(y)/heso(x)*1000000000)/1000000000;
             }
             function start(){
                 var tigia = tiGia(document.getElementById("fr").innerHTML,document.getElementById("to").innerHTML);
