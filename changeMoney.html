@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Change Money</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+        <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <script>
+            function heso(x){
+                x= x.substr(0,1);
+                if (x=="U") return 1;
+                else if(x=="V") return 22285.29;
+                else if (x=="E") return 0.91;
+                else if (x=="G") return 0.71;
+                else if (x=="Y") return 113.71;
+            }
+            function from(x){
+                document.getElementById("fr").innerHTML= x;
+            }
+            function to(x){
+                document.getElementById("to").innerHTML= x;
+            }
+            function swap(){
+                var x = document.getElementById("fr").innerHTML;
+                document.getElementById("fr").innerHTML = document.getElementById("to").innerHTML;
+                document.getElementById("to").innerHTML = x;
+            }           
+            function tiGia(x,y){
+                return Math.round(heso(y)/heso(x)*1000)/1000;
+            }
+            function start(){
+                var tigia = tiGia(document.getElementById("fr").innerHTML,document.getElementById("to").innerHTML);
+                document.getElementById("test").innerHTML = "Tỷ giá: "+tigia;
+                document.getElementById("mto").value=document.getElementById("mfr").value*tigia;
+            }
+        </script>
+        <div class="page-header">
+            <h1>Chuyển đổi các loại tiền tệ</h1>
+            <p>Chuyển đổi giữa các loại tiền</p>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-4">
+                    <div class="dropdown" style="display: inline">
+                        Convert from:
+                        <button id="fr" class="btn btn-primary" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-chevron-down"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li onclick="from(this.innerHTML)">USA($)</li>
+                            <li onclick="from(this.innerHTML)">Vietnam(vnd)</li>
+                            <li onclick="from(this.innerHTML)">Euro(€)</li>
+                            <li onclick="from(this.innerHTML)">GBP(£)</li>
+                            <li onclick="from(this.innerHTML)">Yen(¥)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-sm-4" style="text-align: center">
+                    <button class="btn" onclick="swap()"><span class="glyphicon glyphicon-resize-horizontal"></span></button>
+                </div>
+                <div class="col-sm-4">
+                    <div class="dropdown" style="display: inline">
+                        Convert to:
+                        <button id="to" class="btn btn-warning" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-chevron-down"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li onclick="to(this.innerHTML)">USA($)</li>
+                            <li onclick="to(this.innerHTML)">Vietnam(vnd)</li>
+                            <li onclick="to(this.innerHTML)">Euro(€)</li>
+                            <li onclick="to(this.innerHTML)">GBP(£)</li>
+                            <li onclick="to(this.innerHTML)">Yen(¥)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col-sm-6">
+                    <input id="mfr" type="number" style="height: 50px; width: 80%;">
+                </div>
+                <div class="col-sm-6">
+                    <input id="mto" type="number" style="height: 50px; width: 80%;">
+                </div>
+            </div>
+            <br>
+            <h1 id="test"></h1>
+            <button class="btn btn-success" onclick="start()">
+                Start <br> <span class="glyphicon glyphicon-play"></span>
+            </button>
+        </div>
+    </body>
+</html>
