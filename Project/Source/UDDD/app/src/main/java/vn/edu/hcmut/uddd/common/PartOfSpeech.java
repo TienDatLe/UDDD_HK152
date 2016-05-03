@@ -13,3 +13,4 @@ public enum PartOfSpeech {
     CONJUNCTION,
     INTERJECTION
 }
+

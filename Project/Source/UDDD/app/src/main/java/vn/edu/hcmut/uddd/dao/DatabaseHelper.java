@@ -5,9 +5,12 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Environment;
 import android.util.Pair;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -19,19 +22,17 @@ import vn.edu.hcmut.uddd.common.ConstCommon;
 import vn.edu.hcmut.uddd.entity.Dictionary;
 import vn.edu.hcmut.uddd.entity.Topic;
 import vn.edu.hcmut.uddd.entity.Word;
-import vn.edu.hcmut.uddd.entity.WordServer;
 
 /**
  * Created by TRAN VAN HEN on 3/2/2016.
  */
-public class CommonDao extends SQLiteOpenHelper {
+public class DatabaseHelper extends SQLiteOpenHelper {
 
     private Context context;
     private SharedPreferences preferences;
 
-    public CommonDao(Context context) {
-        super(context, ConstCommon.DATABASE_NAME, null,
-                CommonUtil.getSharedPreferences(context.getSharedPreferences(ConstCommon.SP_FILE_NAME, Context.MODE_PRIVATE), ConstCommon.SP_DB_VERSION, 1));
+    public DatabaseHelper(Context context) {
+        super(context, ConstCommon.DATABASE_NAME, null, ConstCommon.DATABASE_VERSION);
         this.context = context;
         this.preferences = context.getSharedPreferences(ConstCommon.SP_FILE_NAME, Context.MODE_PRIVATE);
     }
@@ -41,9 +42,11 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             BufferedReader reader = new BufferedReader(new InputStreamReader(context.getAssets().open(ConstCommon.DATABASE_SQL), StandardCharsets.UTF_8));
             String line;
+            db.beginTransaction();
             while ((line = reader.readLine()) != null){
                 db.execSQL(line);
             }
+            db.setTransactionSuccessful();
             reader.close();
             CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.DEFAULT_DICTIONARY_TABLE);
             CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_MAX_TOPIC_ID, ConstCommon.MAX_TOPIC);
@@ -51,25 +54,52 @@ public class CommonDao extends SQLiteOpenHelper {
             CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CURRENT_HISTORY, 0);
             CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CHECK_UPDATE_APPLICATION, true);
             CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CHECK_UPDATE_DATABASE, true);
+            CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DB_DOWNLOAD_VERSION + ConstCommon.DEFAULT_DICTIONARY_TABLE, 1);
+            CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DB_DOWNLOAD_ID_DOWNLOADED + ConstCommon.DEFAULT_DICTIONARY_TABLE, 1);
             for (int i = 0; i < ConstCommon.MAX_WORD.length; i++){
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC, ConstCommon.DEFAULT_DICTIONARY_TABLE, i, ConstCommon.MAX_WORD[i]);
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC, ConstCommon.DEFAULT_DICTIONARY_TABLE, i, 0);
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, ConstCommon.DEFAULT_DICTIONARY_TABLE, i, CommonUtil.convertListToString(new ArrayList<Integer>()));
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC + ConstCommon.DEFAULT_DICTIONARY_TABLE + i, ConstCommon.MAX_WORD[i]);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC + ConstCommon.DEFAULT_DICTIONARY_TABLE + i, 0);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + ConstCommon.DEFAULT_DICTIONARY_TABLE + i, CommonUtil.convertListToString(new ArrayList<Integer>()));
             }
             for (int i = 0; i < ConstCommon.DICTIONARY_TABLE.length; i++){
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC, ConstCommon.DICTIONARY_TABLE[i], 0, 0);
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC, ConstCommon.DICTIONARY_TABLE[i], 0, 0);
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, ConstCommon.DICTIONARY_TABLE[i], 0, CommonUtil.convertListToString(new ArrayList<Integer>()));
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC + ConstCommon.DICTIONARY_TABLE[i] + 0, 0);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC + ConstCommon.DICTIONARY_TABLE[i] + 0, 0);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + ConstCommon.DICTIONARY_TABLE[i] + 0, CommonUtil.convertListToString(new ArrayList<Integer>()));
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DB_DOWNLOAD_VERSION + ConstCommon.DICTIONARY_TABLE[i], 1);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DB_DOWNLOAD_ID_DOWNLOADED + ConstCommon.DICTIONARY_TABLE[i], 1);
             }
         }
         catch (Exception e) {
             CommonUtil.logError(this, e);
         }
+        finally {
+            db.endTransaction();
+        }
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        for (int i = oldVersion + 1; i <= newVersion; i++){
+            this.upgradeVersion(db, i);
+        }
+    }
 
+    private void upgradeVersion(SQLiteDatabase db, int version){
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(context.getAssets().open(ConstCommon.DATABASE_FOLDER + version + ConstCommon.DATABASE_EXT), StandardCharsets.UTF_8));
+            String line;
+            db.beginTransaction();
+            while ((line = reader.readLine()) != null) {
+                db.execSQL(line);
+            }
+            db.setTransactionSuccessful();
+        }
+        catch (Exception e){
+            CommonUtil.logError(this, e);
+        }
+        finally {
+            db.endTransaction();
+        }
     }
 
     /**
@@ -85,7 +115,7 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             db = this.getReadableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            cursor = db.rawQuery(CommonUtil.sqlBuilder(ConstCommon.SQL_GET_WORD_BY_ID, table), new String[]{String.valueOf(id), String.valueOf(topic_id)});
+            cursor = db.rawQuery(CommonUtil.format(ConstCommon.SQL_GET_WORD_BY_ID, table), new String[]{String.valueOf(id), String.valueOf(topic_id)});
             cursor.moveToFirst();
             if (cursor.isAfterLast()){
                 throw new Exception(ConstCommon.EXCEPTION_NOT_EXIST);
@@ -120,7 +150,7 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             db = this.getReadableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            cursor = db.rawQuery(CommonUtil.sqlBuilder(ConstCommon.SQL_GET_WORD_BY_WORD, table), new String[]{word});
+            cursor = db.rawQuery(CommonUtil.format(ConstCommon.SQL_GET_WORD_BY_WORD, table), new String[]{word});
             cursor.moveToFirst();
             if (cursor.isAfterLast()){
                 throw new Exception(ConstCommon.EXCEPTION_NOT_EXIST);
@@ -154,9 +184,9 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             db = this.getReadableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            cursor = db.rawQuery(CommonUtil.sqlBuilder(ConstCommon.SQL_COUNT_WORD, table), new String[]{word});
+            cursor = db.rawQuery(CommonUtil.format(ConstCommon.SQL_COUNT_WORD, table), new String[]{word});
             cursor.moveToFirst();
-            result =  cursor.getInt(0) != 0;
+            result = cursor.getInt(0) != 0;
         }
         finally {
             if (db != null) {
@@ -183,7 +213,7 @@ public class CommonDao extends SQLiteOpenHelper {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()){
                 Topic topic = new Topic();
-                topic.setId(cursor.getLong(0));
+                topic.setId(cursor.getInt(0));
                 topic.setName(cursor.getString(1));
                 topic.setMean(cursor.getString(2));
                 result.add(topic);
@@ -270,7 +300,7 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             db = this.getWritableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            db.execSQL(CommonUtil.sqlBuilder(ConstCommon.SQL_UPDATE_NOTE_WORD, table), new String[]{word.getNote(), word.getWord()});
+            db.execSQL(CommonUtil.format(ConstCommon.SQL_UPDATE_NOTE_WORD, table), new String[]{word.getNote(), word.getWord()});
         }
         finally {
             if (db!=null) {
@@ -291,6 +321,32 @@ public class CommonDao extends SQLiteOpenHelper {
         try {
             db = this.getReadableDatabase();
             cursor = db.rawQuery(ConstCommon.SQL_COUNT_IS_MARK, new String[]{word.getWord()});
+            cursor.moveToFirst();
+            result = cursor.getInt(0) != 0;
+        }
+        finally {
+            if (db != null) {
+                db.close();
+            }
+            if (cursor != null){
+                cursor.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Check the word is history
+     * param[word]: the word to check
+     * return: true if it is history
+     * */
+    public boolean getIsHistory(Word word) throws Exception{
+        SQLiteDatabase db = null;
+        Cursor cursor = null;
+        boolean result = false;
+        try {
+            db = this.getReadableDatabase();
+            cursor = db.rawQuery(ConstCommon.SQL_COUNT_HISTORY, new String[]{word.getWord()});
             cursor.moveToFirst();
             result = cursor.getInt(0) != 0;
         }
@@ -412,6 +468,23 @@ public class CommonDao extends SQLiteOpenHelper {
     }
 
     /**
+     * Update point of word
+     * param[word]: the word to update
+     * */
+    public void updateHistory(Word word) throws Exception{
+        SQLiteDatabase db = null;
+        try {
+            db = this.getWritableDatabase();
+            db.execSQL(ConstCommon.SQL_UPDATE_HISTORY, new Object[]{word.getWord()});
+        }
+        finally {
+            if (db != null) {
+                db.close();
+            }
+        }
+    }
+
+    /**
      * Insert new word
      * param[word]: the word insert
      * */
@@ -420,19 +493,20 @@ public class CommonDao extends SQLiteOpenHelper {
         Cursor cursor = null;
         try {
             db = this.getWritableDatabase();
+            db.beginTransaction();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            String delete = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, table, word.getTopicId(), ConstCommon.EMPTY);
+            String delete = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + table + word.getTopicId(), ConstCommon.EMPTY);
             List<Integer> deleted = CommonUtil.convertStringToList(delete);
             int id;
             if (deleted.size() > 0){
                 id = deleted.remove(0);
                 delete = CommonUtil.convertListToString(deleted);
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, table, word.getTopicId(), delete);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + table + word.getTopicId(), delete);
             }
             else{
-                int maxWord = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC, table, word.getTopicId(), 0);
+                int maxWord = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC + table + word.getTopicId(), 0);
                 id = maxWord + 1;
-                CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC, table, word.getTopicId(), id);
+                CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC + table + word.getTopicId(), id);
             }
             cursor = db.rawQuery(ConstCommon.SQL_GET_TOPIC_NAME_BY_ID, new String[]{String.valueOf(word.getTopicId())});
             cursor.moveToFirst();
@@ -440,9 +514,25 @@ public class CommonDao extends SQLiteOpenHelper {
                 throw new Exception(ConstCommon.EXCEPTION_NOT_EXIST);
             }
             String topicName = cursor.getString(0);
-            db.beginTransaction();
-            db.execSQL(CommonUtil.sqlBuilder(ConstCommon.SQL_INSERT_WORD, table), new Object[]{id, word.getTopicId(), word.getWord(), word.getData(), word.getNote(), 1, word.getUrl()});
+            db.execSQL(CommonUtil.format(ConstCommon.SQL_INSERT_WORD, table), new Object[]{id, word.getTopicId(), word.getWord(), word.getData(), word.getNote(), 1, word.getUrl()});
             db.execSQL(ConstCommon.SQL_INSERT_UPLOAD_PENDING, new Object[]{word, word.getData(), table, topicName, word.getUrl()});
+
+            ///TODO: for get data
+            File dir = new File(Environment.getExternalStorageDirectory(), "idic");
+            if (!dir.exists()){
+                dir.mkdir();
+            }
+            File file = new File(dir,"idic.txt");
+            if (!file.exists()){
+                file.createNewFile();
+            }
+            FileOutputStream stream = new FileOutputStream(file, true);
+            String data = "INSERT INTO %s (id, topic_id, word, content, note, is_edited, picture_url) values (%s, %s, '%s', \"%s\", '%s', %s, '%s');\n";
+            byte[] b = CommonUtil.format(data, table, String.valueOf(id), String.valueOf(word.getTopicId()), word.getWord(), word.getData(), word.getNote(), "1", word.getUrl()).getBytes(StandardCharsets.UTF_8);
+            stream.write(b);
+            stream.flush();
+            stream.close();
+
             db.setTransactionSuccessful();
         }
         finally {
@@ -465,6 +555,7 @@ public class CommonDao extends SQLiteOpenHelper {
         Cursor cursor = null;
         try {
             db = this.getWritableDatabase();
+            db.beginTransaction();
             cursor = db.rawQuery(ConstCommon.SQL_GET_TOPIC_NAME_BY_ID, new String[]{String.valueOf(word.getTopicId())});
             cursor.moveToFirst();
             if (cursor.isAfterLast()){
@@ -472,8 +563,7 @@ public class CommonDao extends SQLiteOpenHelper {
             }
             String topicName = cursor.getString(0);
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            db.beginTransaction();
-            db.execSQL(CommonUtil.sqlBuilder(ConstCommon.SQL_UPDATE_WORD, table), new String[]{word.getData(), word.getNote(), word.getUrl(), word.getWord()});
+            db.execSQL(CommonUtil.format(ConstCommon.SQL_UPDATE_WORD, table), new String[]{word.getData(), word.getNote(), word.getUrl(), word.getWord()});
             db.execSQL(ConstCommon.SQL_INSERT_UPLOAD_PENDING, new Object[]{word, word.getData(), table, topicName, word.getUrl()});
             db.setTransactionSuccessful();
         }
@@ -499,7 +589,7 @@ public class CommonDao extends SQLiteOpenHelper {
         try {
             db = this.getReadableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            cursor = db.rawQuery(CommonUtil.sqlBuilder(ConstCommon.SQL_GET_IS_EDITED, table), new String[]{word});
+            cursor = db.rawQuery(CommonUtil.format(ConstCommon.SQL_GET_IS_EDITED, table), new String[]{word});
             cursor.moveToFirst();
             if (cursor.isAfterLast()){
                 throw new Exception(ConstCommon.EXCEPTION_NOT_EXIST);
@@ -585,15 +675,14 @@ public class CommonDao extends SQLiteOpenHelper {
         try{
             db = this.getReadableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            cursor = db.rawQuery(CommonUtil.sqlBuilder(ConstCommon.SQL_GET_LIST_WORD_FOR_GAME, table), new String[]{String.valueOf(limit)});
+            cursor = db.rawQuery(CommonUtil.format(ConstCommon.SQL_GET_LIST_WORD_FOR_GAME, table), new String[]{String.valueOf(limit)});
             cursor.moveToFirst();
             while (!cursor.isAfterLast()){
                 Word word = new Word();
-                word.setTopicId(cursor.getInt(0));
-                word.setWord(cursor.getString(1));
-                word.setData(cursor.getString(2));
-                word.setUrl(cursor.getString(3));
-                result.add(new Pair<>(word, cursor.getInt(4)));
+                word.setWord(cursor.getString(0));
+                word.setData(cursor.getString(1));
+                word.setUrl(cursor.getString(2));
+                result.add(new Pair<>(word, cursor.getInt(3)));
                 cursor.moveToNext();
             }
         }
@@ -649,12 +738,12 @@ public class CommonDao extends SQLiteOpenHelper {
         try {
             db = this.getWritableDatabase();
             String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-            db.execSQL(CommonUtil.sqlBuilder(ConstCommon.SQL_DELETE_WORD, table), new String[]{word.getWord()});
-            String delete = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, table, word.getTopicId(), ConstCommon.EMPTY);
+            db.execSQL(CommonUtil.format(ConstCommon.SQL_DELETE_WORD, table), new String[]{word.getWord()});
+            String delete = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + table + word.getTopicId(), ConstCommon.EMPTY);
             List<Integer> deleted = CommonUtil.convertStringToList(delete);
             deleted.add(word.getId());
             delete = CommonUtil.convertListToString(deleted);
-            CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, table, word.getTopicId(), delete);
+            CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + table + word.getTopicId(), delete);
         }
         finally {
             if (db != null) {
@@ -687,12 +776,12 @@ public class CommonDao extends SQLiteOpenHelper {
      * */
     public Word getNextWord(int topicId)throws Exception{
         String table = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DICTIONARY_NAME, ConstCommon.EMPTY);
-        if (table.equals(ConstCommon.DEFAULT_DICTIONARY_TABLE)){
+        if (!table.equals(ConstCommon.DEFAULT_DICTIONARY_TABLE)){
             topicId = 0;
         }
-        int max = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC, table, topicId, 0);
-        int current = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC, table, topicId, 0);
-        String delete = CommonUtil.getSharedPreferencesForTopic(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC, table, topicId, ConstCommon.EMPTY);
+        int max = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_MAX_WORD_OF_TOPIC + table + topicId, 0);
+        int current = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC + table + topicId, 0);
+        String delete = CommonUtil.getSharedPreferences(this.preferences, ConstCommon.SP_DELETED_WORD_OF_TOPIC + table + topicId, ConstCommon.EMPTY);
         List<Integer> deleted = CommonUtil.convertStringToList(delete);
         if (current == max){
             current = 1;
@@ -703,7 +792,7 @@ public class CommonDao extends SQLiteOpenHelper {
         while (deleted.contains(current)){
             current ++;
         }
-        CommonUtil.setSharedPreferencesForTopic(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC, table, topicId, current);
+        CommonUtil.setSharedPreferences(this.preferences, ConstCommon.SP_CURRENT_WORD_OF_TOPIC + table + topicId, current);
         return this.getWord(current, topicId);
     }
 
@@ -734,140 +823,5 @@ public class CommonDao extends SQLiteOpenHelper {
                 db.close();
             }
         }
-    }
-
-    /**
-     * Get list download word
-     * return: the list word
-     * */
-    public List<WordServer> getListDownloaded() throws Exception{
-        List<WordServer> result = new ArrayList<>();
-        SQLiteDatabase db = null;
-        Cursor cursor = null;
-        try{
-            db = this.getReadableDatabase();
-            cursor = db.rawQuery(ConstCommon.SQL_GET_LIST_DOWNLOAD, null);
-            cursor.moveToFirst();
-            while (!cursor.isAfterLast()){
-                WordServer word = new WordServer();
-                word.setId(cursor.getInt(0));
-                word.setWord(cursor.getString(1));
-                word.setContent(cursor.getString(2));
-                word.setTableName(cursor.getString(3));
-                word.setTopicName(cursor.getString(4));
-                word.setUrl(cursor.getString(5));
-                result.add(word);
-                cursor.moveToNext();
-            }
-        }
-        finally {
-            if (db != null) {
-                db.close();
-            }
-            if (cursor != null){
-                cursor.close();
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Get list upload pending word
-     * return: the list word
-     * */
-    public List<WordServer> getListUploadPending() throws Exception{
-        List<WordServer> result = new ArrayList<>();
-        SQLiteDatabase db = null;
-        Cursor cursor = null;
-        try{
-            db = this.getReadableDatabase();
-            cursor = db.rawQuery(ConstCommon.SQL_GET_LIST_UPLOAD_PENDING, null);
-            cursor.moveToFirst();
-            while (!cursor.isAfterLast()){
-                WordServer word = new WordServer();
-                word.setId(cursor.getInt(0));
-                word.setWord(cursor.getString(1));
-                word.setContent(cursor.getString(2));
-                word.setTableName(cursor.getString(3));
-                word.setTopicName(cursor.getString(4));
-                word.setUrl(cursor.getString(5));
-                result.add(word);
-                cursor.moveToNext();
-            }
-        }
-        finally {
-            if (db != null) {
-                db.close();
-            }
-            if (cursor != null){
-                cursor.close();
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Delete a download word
-     * param[word]: the word to delete
-     * */
-    public void deleteDownloaded(WordServer word) throws Exception{
-        SQLiteDatabase db = null;
-        try {
-            db = this.getReadableDatabase();
-            db.execSQL(ConstCommon.SQL_DELETE_DOWNLOAD, new Object[]{word.getId()});
-        }
-        finally {
-            if (db != null) {
-                db.close();
-            }
-        }
-    }
-
-    /**
-     * Delete a upload pending word
-     * param[word]: the word to delete
-     * */
-    public void deleteUploadPending(WordServer word) throws Exception{
-        SQLiteDatabase db = null;
-        try {
-            db = this.getReadableDatabase();
-            db.execSQL(ConstCommon.SQL_DELETE_UPLOAD_PENDING, new Object[]{word.getId()});
-        }
-        finally {
-            if (db != null) {
-                db.close();
-            }
-        }
-    }
-
-    /**
-     * Insert new download word
-     * param[word]: the word to insert
-     * */
-    public void insertDownload(WordServer word) throws Exception{
-        SQLiteDatabase db = null;
-        try {
-            db = this.getReadableDatabase();
-            db.execSQL(ConstCommon.SQL_INSERT_DOWNLOAD, new Object[]{word.getWord(), word.getContent(), word.getTableName(), word.getTopicName(), word.getUrl()});
-        }
-        finally {
-            if (db != null) {
-                db.close();
-            }
-        }
-    }
-
-    /**
-     * Convert from word server to word
-     * param[wordServer]: the word from server
-     * return: the word with table
-     * */
-    public Pair<Word, String> convertFromWordServer(WordServer wordServer) throws Exception{
-        Word word = new Word();
-        word.setWord(wordServer.getWord());
-        word.setTopicId(this.getTopicId(wordServer.getTopicName()));
-        word.setData(wordServer.getContent());
-        word.setUrl(wordServer.getUrl());
-        return new Pair<>(word, wordServer.getTableName());
     }
 }

@@ -1,8 +1,8 @@
 package vn.edu.hcmut.uddd.entity;
 
-import vn.edu.hcmut.idic.common.CommonUtil;
-import vn.edu.hcmut.idic.common.ConstCommon;
-import vn.edu.hcmut.idic.common.PartOfSpeech;
+import vn.edu.hcmut.uddd.common.CommonUtil;
+import vn.edu.hcmut.uddd.common.ConstCommon;
+import vn.edu.hcmut.uddd.common.PartOfSpeech;
 
 /**
  * Created by TRAN VAN HEN on 3/5/2016.
@@ -63,6 +63,28 @@ public class Meaning extends Data {
                 return ConstCommon.PREPOSITION_MEAN_LABEL;
             case PRONOUNS:
                 return ConstCommon.PRONOUNS_MEAN_LABEL;
+        }
+        return ConstCommon.EMPTY;
+    }
+
+    public String getPartOfSpeechString(){
+        switch (partOfSpeech){
+            case VERB:
+                return ConstCommon.VERB_STRING;
+            case ADJECTIVE:
+                return ConstCommon.ADJECTIVE_STRING;
+            case ADVERB:
+                return ConstCommon.ADVERB_STRING;
+            case CONJUNCTION:
+                return ConstCommon.CONJUNCTION_STRING;
+            case INTERJECTION:
+                return ConstCommon.INTERJECTION_STRING;
+            case NOUNS:
+                return ConstCommon.NOUNS_STRING;
+            case PREPOSITION:
+                return ConstCommon.PREPOSITION_STRING;
+            case PRONOUNS:
+                return ConstCommon.PRONOUNS_STRING;
         }
         return ConstCommon.EMPTY;
     }

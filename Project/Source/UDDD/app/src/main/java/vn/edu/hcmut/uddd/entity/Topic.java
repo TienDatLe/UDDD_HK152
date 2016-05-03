@@ -4,15 +4,15 @@ package vn.edu.hcmut.uddd.entity;
  * Created by TRAN VAN HEN on 3/5/2016.
  */
 public class Topic extends Data{
-    private long id;
+    private int id;
     private String name;
     private String mean;
 
-    public long getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(int id) {
         this.id = id;
     }
 

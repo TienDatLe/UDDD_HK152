@@ -1,6 +1,6 @@
 package vn.edu.hcmut.uddd.entity;
 
-import vn.edu.hcmut.idic.common.CommonUtil;
+import vn.edu.hcmut.uddd.common.CommonUtil;
 
 /**
  * Created by TRAN VAN HEN on 3/6/2016.
